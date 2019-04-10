@@ -49,6 +49,7 @@ public:
     using pointer = std::shared_ptr<checked_type>;
     using const_pointer = std::shared_ptr<const checked_type>;
     master_ptr() = default;
+    explicit master_ptr(pointer ptr) { set(std::move(ptr)); }
     master_ptr(const master_ptr&) = delete;
     master_ptr(master_ptr&&) = delete;
     master_ptr& operator=(const master_ptr&) = delete;
@@ -57,13 +58,14 @@ public:
         std::lock_guard lck(_mtx);
         if (_ptr)
             _ptr->_current = false;
-        _ptr = ptr;
+        _ptr = std::move(ptr);
+        _ptr->_current = true;
     }
 private:
     using const_weak_pointer = std::weak_ptr<const checked_type>;
     const_pointer get() const {
         std::lock_guard lck(_mtx);
-        return _ptr;
+        return _ptr->current() ? _ptr : nullptr;
     }
     pointer _ptr;
     mutable std::mutex _mtx;
@@ -76,10 +78,16 @@ public:
     using value_type = T;
     using shared_pointer = std::shared_ptr<const value_type>;
     using const_shared_pointer = shared_pointer;
+    using pointer = shared_pointer;
+    using const_pointer = pointer;
     using raw_pointer = const value_type*;
     using const_raw_pointer = raw_pointer;
-    checked_shared_ptr(const master_ptr<value_type>& master):
+    explicit checked_shared_ptr(const master_ptr<value_type>& master):
         _master(master), _ptr(_master.get()) {}
+    checked_shared_ptr(const checked_shared_ptr&) = default;
+    checked_shared_ptr(checked_shared_ptr&&) = default;
+    checked_shared_ptr& operator=(const checked_shared_ptr&) = default;
+    checked_shared_ptr& operator=(checked_shared_ptr&&) = default;
     shared_pointer get_shared() const {
         if (!_ptr || !_ptr->current)
             _ptr = _master.get();
@@ -99,11 +107,17 @@ private:
 template <class T> class checked_weak_ptr {
 public:
     using value_type = T;
-    using pointer = std::shared_ptr<const value_type>;
+    using shared_pointer = std::shared_ptr<const value_type>;
+    using const_shared_pointer = shared_pointer;
+    using pointer = shared_pointer;
     using const_pointer = pointer;
-    checked_weak_ptr(const master_ptr<value_type>& master):
+    explicit checked_weak_ptr(const master_ptr<value_type>& master):
         _master(master), _ptr(_master.get()) {}
-    pointer get() {
+    checked_weak_ptr(const checked_weak_ptr&) = default;
+    checked_weak_ptr(checked_weak_ptr&&) = default;
+    checked_weak_ptr& operator=(const checked_weak_ptr&) = default;
+    checked_weak_ptr& operator=(checked_weak_ptr&&) = default;
+    shared_pointer get() {
         auto p = _ptr.lock();
         if (!p || !p->current())
             _ptr = p = _master.get();
