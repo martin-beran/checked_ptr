@@ -73,6 +73,12 @@ private:
     friend class checked_weak_ptr<value_type>;
 };
 
+//template <class T> explicit master_ptr(std::shared_ptr<checked_object<T>>) ->
+//    master_ptr<T>;
+
+template <class T> explicit master_ptr(typename master_ptr<T>::pointer) ->
+    master_ptr<T>;
+
 template <class T> class checked_shared_ptr {
 public:
     using value_type = T;
