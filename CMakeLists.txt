@@ -10,3 +10,7 @@ find_package(Threads REQUIRED)
 add_executable(example1 examples/example1.cpp)
 target_include_directories(example1 PRIVATE include)
 target_link_libraries(example1 Threads::Threads)
+
+add_executable(benchmark examples/benchmark.cpp)
+target_include_directories(benchmark PRIVATE include)
+target_link_libraries(benchmark Threads::Threads)
