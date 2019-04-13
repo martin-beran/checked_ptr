@@ -7,7 +7,8 @@ namespace cptr = checked_ptr;
 
 cptr::master_ptr<std::string> master;
 
-int main(int argc, char *argv[]) {
+int main(int argc, char* argv[])
+{
     master.set(std::make_shared<decltype(master)::checked_type>(argc > 1 ?
                                                                 argv[1] : ""));
     cptr::checked_shared_ptr shared(master);
