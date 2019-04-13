@@ -120,6 +120,26 @@ w_iter  ... number of reads per write in the writer thread)" << std::endl;
 
 int main(int argc, char* argv[])
 try {
+    std::cout << "variant " <<
+#ifdef SHARED_PTR
+        "shared_ptr"
+#endif
+#ifdef CHECKED_SHARED_PTR
+        "checked_shared_ptr"
+#endif
+#ifdef CHECKED_WEAK_PTR
+        "checked_weak_ptr"
+#endif
+#ifdef CHECKED_RAW_PTR
+        "checked_raw_ptr"
+#endif
+        << " " <<
+#ifdef USE_MUTEX
+        "with mutex"
+#else
+        "without mutex"
+#endif
+        << std::endl;
     // process command line
     if (argc != 4)
         throw bad_argv{};

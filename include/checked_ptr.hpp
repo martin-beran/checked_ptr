@@ -22,12 +22,23 @@ public:
     checked_object(checked_object&&) = delete;
     checked_object& operator=(const checked_object&) = delete;
     checked_object& operator=(checked_object&&) = delete;
-    bool current() const { return _current; }
+    bool current() const {
+        return std::atomic_load_explicit(&_current, std::memory_order_relaxed);
+    }
     static std::shared_ptr<const value_type>
         get_shared(const std::shared_ptr<const checked_object>& ptr)
     {
         if (ptr)
             return {ptr, &ptr->_value};
+        else
+            return nullptr;
+    }
+    // this overload does not increment the reference counter in C++20
+    static std::shared_ptr<const value_type>
+        get_shared(std::shared_ptr<const checked_object>&& ptr)
+    {
+        if (ptr)
+            return {std::move(ptr), &ptr->_value};
         else
             return nullptr;
     }
@@ -55,20 +66,41 @@ public:
     master_ptr& operator=(const master_ptr&) = delete;
     master_ptr& operator=(master_ptr&&) = delete;
     void set(pointer ptr) {
+#if USE_MUTEX
         std::lock_guard lck(_mtx);
         if (_ptr)
-            _ptr->_current = false;
+            std::atomic_store_explicit(&_ptr->_current, false,
+                                       std::memory_order_relaxed);
         _ptr = std::move(ptr);
-        _ptr->_current = true;
+        if (_ptr)
+            std::atomic_store_explicit(&_ptr->_current, true,
+                                       std::memory_order_relaxed);
+#else
+        if (ptr)
+            std::atomic_store_explicit(&ptr->_current, true,
+                                       std::memory_order_relaxed);
+        pointer old =
+            std::atomic_exchange_explicit(&_ptr, ptr,
+                                          std::memory_order_release);
+        if (old && ptr != old)
+            std::atomic_store_explicit(&old->_current, false,
+                                       std::memory_order_relaxed);
+#endif
     }
 private:
     using const_weak_pointer = std::weak_ptr<const checked_type>;
     const_pointer get() const {
+#if USE_MUTEX
         std::lock_guard lck(_mtx);
-        return _ptr->current() ? _ptr : nullptr;
+        return _ptr && _ptr->current() ? _ptr : nullptr;
+#else
+        return std::atomic_load_explicit(&_ptr, std::memory_order_acquire);
+#endif
     }
     pointer _ptr;
+#if USE_MUTEX
     mutable std::mutex _mtx;
+#endif
     friend class checked_shared_ptr<value_type>;
     friend class checked_weak_ptr<value_type>;
 };
@@ -90,6 +122,8 @@ public:
     using const_raw_pointer = raw_pointer;
     explicit checked_shared_ptr(const master_ptr<value_type>& master):
         _master(master), _ptr(_master.get()) {}
+    inline
+        explicit checked_shared_ptr(const checked_weak_ptr<value_type>& weak);
     checked_shared_ptr(const checked_shared_ptr&) = default;
     checked_shared_ptr(checked_shared_ptr&&) = default;
     checked_shared_ptr& operator=(const checked_shared_ptr&) = default;
@@ -127,12 +161,25 @@ public:
         auto p = _ptr.lock();
         if (!p || !p->current())
             _ptr = p = _master.get();
-        return p ? checked_object<value_type>::get_shared(p) : nullptr;
+        return p ?
+            checked_object<value_type>::get_shared(std::move(p)) : nullptr;
+    }
+    checked_shared_ptr<T> lock() const {
+        return checked_shared_ptr<T>(_master);
     }
 private:
     using master_pointer = typename master_ptr<value_type>::const_weak_pointer;
     const master_ptr<value_type>& _master;
     master_pointer _ptr;
+    friend class checked_shared_ptr<value_type>;
 };
+
+template <class T> checked_shared_ptr<T>::checked_shared_ptr(
+                                    const checked_weak_ptr<value_type>& weak):
+    checked_shared_ptr(weak.lock())
+{
+    if (!_ptr)
+        throw std::bad_weak_ptr{};
+}
 
 }
