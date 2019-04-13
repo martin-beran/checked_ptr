@@ -13,12 +13,19 @@ struct shared_data {
     long long val = 0;
 };
 
-void writer_fun(cptr::master_ptr<shared_data>& /*data*/, long long /*iter*/,
+using thread_data =
+#ifdef SHARED_PTR
+    std::shared_ptr<shared_data>;
+#else
+    cptr::master_ptr<shared_data>;
+#endif
+
+void writer_fun(thread_data& /*data*/, long long /*iter*/,
                 long long /*w_iter*/)
 {
 }
 
-void reader_fun(const cptr::master_ptr<shared_data>& /*data*/, long long /*iter*/)
+void reader_fun(const thread_data& /*data*/, long long /*iter*/)
 {
 }
 
@@ -68,8 +75,13 @@ try {
     if (threads_n < 1 || iter < 1 || w_iter < 1)
         throw bad_argv{};
     // prepare shared data
-    cptr::master_ptr
-        data{std::make_shared<cptr::checked_object<shared_data>>()};
+    thread_data data{std::make_shared<
+#ifdef SHARED_PTR
+        shared_data
+#else
+        cptr::checked_object<shared_data>
+#endif
+    >()};
     // run threads
     std::vector<std::thread> threads;
     threads.emplace_back(writer_fun, std::ref(data), iter, w_iter);
