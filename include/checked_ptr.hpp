@@ -94,8 +94,8 @@ public:
     checked_shared_ptr(checked_shared_ptr&&) = default;
     checked_shared_ptr& operator=(const checked_shared_ptr&) = default;
     checked_shared_ptr& operator=(checked_shared_ptr&&) = default;
-    shared_pointer get_shared() const {
-        if (!_ptr || !_ptr->current)
+    shared_pointer get_shared() {
+        if (!_ptr || !_ptr->current())
             _ptr = _master.get();
         return _ptr ? checked_object<value_type>::get_shared(_ptr) : nullptr;
     }
@@ -123,7 +123,7 @@ public:
     checked_weak_ptr(checked_weak_ptr&&) = default;
     checked_weak_ptr& operator=(const checked_weak_ptr&) = default;
     checked_weak_ptr& operator=(checked_weak_ptr&&) = default;
-    shared_pointer get() {
+    shared_pointer get_shared() {
         auto p = _ptr.lock();
         if (!p || !p->current())
             _ptr = p = _master.get();

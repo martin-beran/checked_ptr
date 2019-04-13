@@ -17,7 +17,7 @@ int main(int argc, char* argv[])
     else
         std::cout << "shared=<nullptr>" << std::endl;
     cptr::checked_weak_ptr weak(master);
-    if (auto p = weak.get())
+    if (auto p = weak.get_shared())
         std::cout << "weak=" << *p << std::endl;
     else
         std::cout << "weak=<nullptr>" << std::endl;
