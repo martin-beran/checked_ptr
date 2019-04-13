@@ -13,8 +13,10 @@ target_include_directories(example1 PRIVATE include)
 target_link_libraries(example1 Threads::Threads)
 
 set(TARGET benchmark)
-foreach (VARIANT shared checked_shared checked_weak checked_raw)
-    if (${VARIANT} STREQUAL shared)
+foreach (VARIANT shared shared_mutex shared_rwlock
+        checked_shared checked_weak checked_raw)
+    if (${VARIANT} STREQUAL shared OR ${VARIANT} STREQUAL shared_mutex OR
+            ${VARIANT} STREQUAL shared_rwlock)
         set(VARIANT_MUTEX _)
     else()
         set(VARIANT_MUTEX _ _mutex)
