@@ -1,6 +1,8 @@
 #include "checked_ptr.hpp"
 
+#include <chrono>
 #include <cstdlib>
+#include <iomanip>
 #include <iostream>
 #include <shared_mutex>
 #include <string>
@@ -195,6 +197,7 @@ try {
     // prepare shared data
     thread_data data{make_data()};
     // run threads
+    auto t0 = std::chrono::steady_clock::now();
     std::vector<std::thread> threads;
     threads.emplace_back(writer_fun, std::ref(data), iter, w_iter);
     for (decltype(threads_n) i = 1; i < threads_n; ++i) {
@@ -203,6 +206,10 @@ try {
     // finish
     for (auto& t: threads)
         t.join();
+    auto t1 = std::chrono::steady_clock::now();
+    auto us = std::chrono::duration_cast<std::chrono::microseconds>(t1 - t0);
+    std::cout << "time=" << (us.count() / 1000000) << "." << std::setw(6) <<
+        std::setfill('0') << (us.count() % 1000000) << std::endl;
     return EXIT_SUCCESS;
 } catch (bad_argv&) {
     usage(argv[0]);
